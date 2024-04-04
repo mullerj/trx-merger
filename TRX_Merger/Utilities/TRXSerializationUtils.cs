@@ -9,7 +9,7 @@ namespace TRX_Merger.Utilities
     public static class TRXSerializationUtils
     {
         #region Serializers
-        internal static string SerializeAndSaveTestRun(TestRun testRun, string targetPath)
+        public static string SerializeAndSaveTestRun(TestRun testRun, string targetPath)
         {
             XNamespace xmlns = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
             XDocument doc =
