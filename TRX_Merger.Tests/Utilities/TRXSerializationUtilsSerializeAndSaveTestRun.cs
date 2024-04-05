@@ -33,12 +33,6 @@ namespace TRX_Merger.Tests.Utilities
             Assert.Equal(expectedResult, actualResult);
             Assert.True(File.Exists(expectedResult));
 
-            // Set RelativeResultsDirectory to null since it is not serialized
-            foreach (var testResult in expectedTestRun.Results)
-            {
-                testResult.RelativeResultsDirectory = null;
-            }
-
             var xmlAttributeOverrides = new XmlAttributeOverrides();
             var rootType = typeof(TestRun);
             var rootNamespace = rootType.Namespace;
@@ -56,7 +50,10 @@ namespace TRX_Merger.Tests.Utilities
 
             foreach (var type in types)
             {
-                var attributeProperties = type.GetProperties().Where(p => !p.PropertyType.IsGenericType && p.PropertyType.Namespace != rootNamespace && !excludedMembers.Contains(p));
+                var attributeProperties = type.GetProperties()
+                    .Where(p => !p.PropertyType.IsGenericType && 
+                    p.PropertyType.Namespace != rootNamespace && 
+                    !excludedMembers.Contains(p));
                 foreach (var property in attributeProperties)
                 {
                     var xmlAttributes = new XmlAttributes();
@@ -75,7 +72,8 @@ namespace TRX_Merger.Tests.Utilities
             var serializer = new XmlSerializer(rootType, xmlAttributeOverrides, [], null, defaultNamespace);
             using var reader = new StreamReader(expectedResult);
             var actualTestRun = serializer.Deserialize(reader) as TestRun;
-            actualTestRun.Should().BeEquivalentTo(expectedTestRun);
+            actualTestRun.Should().BeEquivalentTo(expectedTestRun, opt => 
+                opt.For(tr => tr.Results).Exclude(r => r.RelativeResultsDirectory));
         }
 
         public void Dispose()

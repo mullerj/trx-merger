@@ -26,13 +26,8 @@ namespace TRX_Merger.Tests.Utilities
 
             var actualTestRun = TRXSerializationUtils.DeserializeTRX(_targetPath);
 
-            // Set RelativeResultsDirectory to null since it is not serialized
-            foreach (var testResult in expectedTestRun.Results)
-            {
-                testResult.RelativeResultsDirectory = null;
-            }
-
-            actualTestRun.Should().BeEquivalentTo(expectedTestRun);
+            actualTestRun.Should().BeEquivalentTo(expectedTestRun, opt =>
+                opt.For(tr => tr.Results).Exclude(r => r.RelativeResultsDirectory));
         }
 
         public void Dispose()
