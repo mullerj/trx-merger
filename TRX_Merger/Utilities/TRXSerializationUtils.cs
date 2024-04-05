@@ -112,7 +112,7 @@ namespace TRX_Merger.Utilities
         #endregion
 
         #region Deserializers
-        internal static TestRun DeserializeTRX(string trxPath)
+        public static TestRun DeserializeTRX(string trxPath)
         {
             TestRun testRun = new TestRun();
 
