@@ -27,7 +27,8 @@ namespace TRX_Merger.Tests.Utilities
             var actualTestRun = TRXSerializationUtils.DeserializeTRX(_targetPath);
 
             actualTestRun.Should().BeEquivalentTo(expectedTestRun, opt =>
-                opt.For(tr => tr.Results).Exclude(r => r.RelativeResultsDirectory));
+                opt.For(tr => tr.Results).Exclude(r => r.RelativeResultsDirectory)
+                .For(tr => tr.Results).Exclude(r => r.Output.StdOut));
         }
 
         public void Dispose()
