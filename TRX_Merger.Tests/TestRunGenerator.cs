@@ -8,7 +8,7 @@ namespace TRX_Merger.Tests
     {
         private static string ToTitleCase(string str) => CultureInfo.CurrentCulture.TextInfo.ToTitleCase(str);
 
-        public static List<TestRun> GenerateTestRuns(int count)
+        public static TestRun GenerateTestRun()
         {
             var testMethodFaker = new Faker<TestMethod>()
                 .RuleFor(tm => tm.CodeBase, f => f.System.FilePath())
@@ -126,9 +126,25 @@ namespace TRX_Merger.Tests
                     return rs;
                 });
 
-            return testRunFaker.Generate(count);
+            return testRunFaker.Generate(1).First();
         }
 
-        public static TestRun GenerateTestRun() => GenerateTestRuns(1).First();
+        public static List<TestRun> GenerateTestRuns(int count)
+        {
+            var testRuns = new List<TestRun>();
+            for (int i = 0; i < count; i++)
+            {
+                var testRun = GenerateTestRun();
+                testRuns.Add(testRun);
+            }
+            return testRuns;
+        }
+
+        public static List<TestRun> GenerateTestRuns()
+        {
+            var faker = new Faker();
+            var count = faker.Random.Int(3, 10);
+            return GenerateTestRuns(count);
+        }
     }
 }
