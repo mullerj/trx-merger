@@ -1,6 +1,6 @@
 ﻿using Bogus;
 using FluentAssertions;
-using System.Xml;
+using System.Xml.Linq;
 using TRX_Merger.Utilities;
 
 namespace TRX_Merger.Tests.Utilities
@@ -41,19 +41,9 @@ namespace TRX_Merger.Tests.Utilities
 
             expectedTestRun.RunUser = string.Empty;
 
-            var xmlDocument = new XmlDocument();
-            xmlDocument.Load(_targetPath);
-            var namespaceManager = new XmlNamespaceManager(xmlDocument.NameTable);
-            var namespaceUri = xmlDocument.DocumentElement?.NamespaceURI;
-            var ns = "ns";
-            if (namespaceUri != null)
-            {
-                namespaceManager.AddNamespace("ns", namespaceUri);
-            }
-            var testRunNode = xmlDocument.SelectSingleNode($"/{ns}:TestRun", namespaceManager);
-            var runUserAttribute = testRunNode?.Attributes?["runUser"];
-            testRunNode?.Attributes?.Remove(runUserAttribute);
-            xmlDocument.Save(_targetPath);
+            var xDocument = XDocument.Load(_targetPath);
+            xDocument.Root?.Attribute("runUser")?.Remove();
+            xDocument.Save(_targetPath);
 
             var actualTestRun = TRXSerializationUtils.DeserializeTRX(_targetPath);
 
