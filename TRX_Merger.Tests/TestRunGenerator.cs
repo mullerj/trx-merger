@@ -8,6 +8,38 @@ namespace TRX_Merger.Tests
     {
         private static string ToTitleCase(string str) => CultureInfo.CurrentCulture.TextInfo.ToTitleCase(str);
 
+        const string passed = "Passed";
+        const string failed = "Failed";
+
+        public static string[] UnitTestResultOutcomes => [passed, failed];
+
+        public static Counters GenerateCounters(TestRun testRun)
+        {
+            var count = testRun.Results.Count;
+            var passedCount = testRun.Results.Count(r => r.Outcome == passed);
+            var failedCount = testRun.Results.Count(r => r.Outcome == failed);
+            return new Counters
+            {
+                Total = count,
+                Еxecuted = count,
+                Passed = passedCount,
+                Failed = failedCount,
+                Timeout = 0,
+                Aborted = 0,
+                Inconclusive = 0,
+                PassedButRunAborted = 0,
+                NotRunnable = 0,
+                Disconnected = 0,
+                Warning = 0,
+                NotExecuted = 0,
+                Completed = count,
+                InProgress = 0,
+                Pending = 0
+            };
+        }
+
+        public static string GenerateOutcome(Counters counters) => counters.Failed > 0 ? failed : passed;
+
         public static TestRun GenerateTestRun()
         {
             var testMethodFaker = new Faker<TestMethod>()
@@ -41,17 +73,13 @@ namespace TRX_Merger.Tests
                 .RuleFor(uo => uo.StdErr, (f, uo) => uo.ErrorInfo.StackTrace)
                 .RuleFor(uo => uo.StdOut, (f, uo) => uo.ErrorInfo.Message);
 
-            const string passed = "Passed";
-            const string failed = "Failed";
-            var unitTestResultOutcomes = new[] { passed, failed };
-
             var unitTestResultFaker = new Faker<UnitTestResult>()
                 .RuleFor(ur => ur.ComputerName, f => f.Hacker.Noun())
                 .RuleFor(ur => ur.StartTime, f => f.Date.Recent().ToString())
                 .RuleFor(ur => ur.EndTime, f => f.Date.Soon().ToString())
                 .RuleFor(ur => ur.Duration, (f, ur) => (DateTime.Parse(ur.EndTime) - DateTime.Parse(ur.StartTime)).ToString())
                 .RuleFor(ur => ur.TestType, () => Guid.NewGuid().ToString())
-                .RuleFor(ur => ur.Outcome, f => f.PickRandom(unitTestResultOutcomes))
+                .RuleFor(ur => ur.Outcome, f => f.PickRandom(UnitTestResultOutcomes))
                 .RuleFor(ur => ur.Output, () => unitTestResultOutputFaker.Generate(1).First());
 
             var timesFaker = new Faker<Times>()
@@ -92,10 +120,8 @@ namespace TRX_Merger.Tests
                     return ur;
                 }).ToList())
                 .RuleFor(tf => tf.ResultSummary, (f, tf) => {
-                    var count = tf.Results.Count;
-                    var passedCount = tf.Results.Count(r => r.Outcome == passed);
-                    var failedCount = tf.Results.Count(r => r.Outcome == failed);
-                    var outcome = failedCount > 0 ? failed : passed;
+                    var counters = GenerateCounters(tf);
+                    var outcome = GenerateOutcome(counters);
 
                     var runInfos = runInfoFaker.Generate(1);
                     runInfos.First().Outcome = outcome;
@@ -103,24 +129,7 @@ namespace TRX_Merger.Tests
                     var rs = new ResultSummary
                     {
                         Outcome = outcome,
-                        Counters = new Counters
-                        {
-                            Total = count,
-                            Еxecuted = count,
-                            Passed = passedCount,
-                            Failed = failedCount,
-                            Timeout = 0,
-                            Aborted = 0,
-                            Inconclusive = 0,
-                            PassedButRunAborted = 0,
-                            NotRunnable = 0,
-                            Disconnected = 0,
-                            Warning = 0,
-                            NotExecuted = 0,
-                            Completed = count,
-                            InProgress = 0,
-                            Pending = 0
-                        },
+                        Counters = counters,
                         RunInfos = runInfos
                     };
                     return rs;
