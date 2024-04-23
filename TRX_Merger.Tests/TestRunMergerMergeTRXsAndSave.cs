@@ -115,6 +115,14 @@ namespace TRX_Merger.Tests
             return targetPath;
         }
 
+        private void UpdateResultsSummary(TestRun testRun)
+        {
+            var counters = TestRunGenerator.GenerateCounters(testRun);
+            var outcome = TestRunGenerator.GenerateOutcome(counters);
+            testRun.ResultSummary.Counters = counters;
+            testRun.ResultSummary.Outcome = outcome;
+        }
+
         [Fact]
         public void SavesAndReturnsCombinedTrxWithDuplicatesRemoved()
         {
@@ -125,23 +133,67 @@ namespace TRX_Merger.Tests
             var testRunWithUpdatedResults = TRXSerializationUtils.DeserializeTRX(targetPath);
             var updatedResultsCount = faker.Random.Int(10, testRunWithUpdatedResults.Results.Count - 1);
             var updatedTestResults = faker.Random.ListItems(testRunWithUpdatedResults.Results, updatedResultsCount);
-            foreach ( var updatedTestResult in updatedTestResults )
+            foreach (var existingTestResult in updatedTestResults )
             {
-                updatedTestResult.StartTime = faker.Date.Soon(refDate: DateTime.Parse(updatedTestResult.StartTime)).ToString();
-                updatedTestResult.Outcome = faker.PickRandom(TestRunGenerator.UnitTestResultOutcomes);
+                var updatedTestResult = new UnitTestResult 
+                {
+                    ExecutionId = existingTestResult.ExecutionId,
+                    TestId = existingTestResult.TestId,
+                    TestName = existingTestResult.TestName,
+                    ComputerName = existingTestResult.ComputerName,
+                    Duration = existingTestResult.Duration,
+                    StartTime = faker.Date.Soon(refDate: DateTime.Parse(existingTestResult.StartTime)).ToString(),
+                    EndTime = existingTestResult.EndTime,
+                    TestType = existingTestResult.TestType,
+                    Outcome = faker.PickRandom(TestRunGenerator.UnitTestResultOutcomes),
+                    TestListId = existingTestResult.TestListId,
+                    RelativeResultsDirectory = existingTestResult.RelativeResultsDirectory,
+                    Output = new UnitTestResultOutput
+                    {
+                        StdErr = existingTestResult.Output.StdErr,
+                        StdOut = existingTestResult.Output.StdOut,
+                        ErrorInfo = new ErrorInfo
+                        {
+                            Message = existingTestResult.Output.ErrorInfo.Message,
+                            StackTrace = existingTestResult.Output.ErrorInfo.StackTrace
+                        }
+                    }
+                };
+                testRunWithUpdatedResults.Results.Add(updatedTestResult);
             }
+            var expectedTargetPath = SerializeAndSaveWithRandomFilename(testRunWithUpdatedResults);
+            var expectedTestRun = TRXSerializationUtils.DeserializeTRX(expectedTargetPath);
+            UpdateResultsSummary(expectedTestRun);
+
             testRunWithUpdatedResults.Results.RemoveAll(tr => !updatedTestResults.Contains(tr));
             testRunWithUpdatedResults.TestDefinitions.RemoveAll(td => !updatedTestResults.Any(tr => tr.TestId == td.Id));
             testRunWithUpdatedResults.TestEntries.RemoveAll(te => !updatedTestResults.Any(tr => tr.TestId == te.TestId));
-            var counters = TestRunGenerator.GenerateCounters(testRunWithUpdatedResults);
-            var outcome = TestRunGenerator.GenerateOutcome(counters);
-            testRunWithUpdatedResults.ResultSummary.Counters = counters;
-            testRunWithUpdatedResults.ResultSummary.Outcome = outcome;
+            UpdateResultsSummary(testRunWithUpdatedResults);
             foreach (var runInfo in testRunWithUpdatedResults.ResultSummary.RunInfos)
             {
-                runInfo.Outcome = outcome;
+                runInfo.Timestamp = faker.Date.Soon(refDate: DateTime.Parse(runInfo.Timestamp)).ToString();
+                runInfo.Outcome = testRunWithUpdatedResults.ResultSummary.Outcome;
+                expectedTestRun.ResultSummary.RunInfos.Add(runInfo);
             }
+
             var updatedTargetPath = SerializeAndSaveWithRandomFilename(testRunWithUpdatedResults);
+
+            var trxFiles = new List<string> { targetPath, updatedTargetPath };
+
+            var actualTestRun = TestRunMerger.MergeTRXsAndSave(trxFiles, _outputFile);
+
+            expectedTestRun.Id = actualTestRun.Id;
+
+            actualTestRun.Should().BeEquivalentTo(expectedTestRun, opt =>
+                opt.For(tr => tr.Results).Exclude(r => r.RelativeResultsDirectory)
+                .For(tr => tr.Results).Exclude(r => r.Output.StdOut));
+
+            Assert.True(File.Exists(_outputFile));
+
+            var actualSavedTestRun = TRXSerializationUtils.DeserializeTRX(_outputFile);
+            actualSavedTestRun.Should().BeEquivalentTo(expectedTestRun, opt =>
+                opt.For(tr => tr.Results).Exclude(r => r.RelativeResultsDirectory)
+                .For(tr => tr.Results).Exclude(r => r.Output.StdOut));
         }
 
         public void Dispose()
